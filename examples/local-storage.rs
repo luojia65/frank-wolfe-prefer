@@ -21,6 +21,7 @@ impl Local {
         v.transpose();
         let m = &self.yi_t1 * (1.0 - 1.0 / max_t as f32) - 
             &ui * (1.0 /*?*/ / max_t as f32) * v;
+        // let yi_t = 
         unimplemented!()
     }
 }
@@ -49,7 +50,7 @@ fn main() {
     let sigma = l * l * f32::sqrt(64.0 * max_t as f32 * f32::log10(1.0 / delta)) / epsilon;
     println!("Parameter sigma: {}", sigma);
     let mut lambda = 0.0;
-    let mut v = MatrixBuf::new_filled(0.0, [N, 1]);
+    let mut v = MatrixBuf::new_filled(0.0, [1, N]);
     for t in 0..max_t {
         let mut w = MatrixBuf::new_filled(0.0, [N, N]);
         let lambda_prime = lambda + f32::sqrt(sigma * f32::log10(N as f32 / beta)) 

@@ -3,8 +3,9 @@ use crate::number::Sqrt;
 use core::fmt::{self, Debug};
 use core::ops::{Add, Sub, Mul, Index, IndexMut};
 
-// pub type Matrix<T, const R: usize, const C: usize>
-//     = Array<T, 2, [R, C]>;
+// pub struct Matrix<T, const R: usize, const C: usize> {
+//     inner: [T; R]
+// }
 
 #[derive(Clone)]
 pub struct MatrixBuf<T> {
@@ -34,6 +35,10 @@ impl<T> MatrixBuf<T> {
         self.array
             .shape()
             .len_of(if !self.transposed { 1 } else { 0 })
+    }
+
+    pub fn shape(&self) -> [usize; 2] {
+        [self.nrows(), self.ncols()]
     }
 }
 
