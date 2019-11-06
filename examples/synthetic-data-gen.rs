@@ -1,4 +1,4 @@
-use frank_wolfie_prefer::{array::ArrayBuf, linalg::MatrixBuf};
+use frank_wolfe_prefer::{array::ArrayBuf, linalg::MatrixBuf};
 
 const M: usize = 500;
 const N: usize = 40;

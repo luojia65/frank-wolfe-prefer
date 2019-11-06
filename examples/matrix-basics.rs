@@ -1,4 +1,4 @@
-use frank_wolfie_prefer::{array::ArrayBuf, linalg::MatrixBuf};
+use frank_wolfe_prefer::{array::ArrayBuf, linalg::MatrixBuf};
 
 fn main() {
     let data = vec![0, 1, 2, 3, 4, 5];
