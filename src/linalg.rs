@@ -93,7 +93,7 @@ where
 
 impl<T> Mul for MatrixBuf<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Clone + Copy,
+    T: Mul<Output = T> + Add<Output = T>,
 {
     type Output = Self;
 
