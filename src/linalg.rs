@@ -270,7 +270,7 @@ where
 {
     if a.ncols() != b.nrows() {
         panic!(
-            "cannot multiply two matrices m*n1 and n2*p with n1 != n2 ({} != {})",
+            "cannot multiply two matrices m*n1 and n2*p while n1 != n2 ({} != {})",
             a.ncols(),
             b.nrows()
         );
