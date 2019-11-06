@@ -76,6 +76,19 @@ impl<T> IndexMut<[usize; 2]> for MatrixBuf<T> {
     }
 }
 
+impl<T> Index<usize> for MatrixBuf<T> {
+    type Output = [T]; // MatrixView<T>
+
+    fn index(&self, r: usize) -> &[T] {
+        if !self.transposed {
+            let cols = self.ncols();
+            &self.array.as_slice()[(cols * r)..(cols * (r + 1))]
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
 impl<T> fmt::Debug for MatrixBuf<T>
 where
     T: Debug,
@@ -138,19 +151,27 @@ where
     MatrixBuf::from(ans)
 }
 
-pub trait Norm<T> {
-    fn norm(mat: &MatrixBuf<T>) -> T;
+pub trait Norm<M: ?Sized, R> {
+    fn norm(input: &M) -> R;
 }
 
 // ||x||₂
 pub struct EuclideanNorm;
 
-impl<T> Norm<T> for EuclideanNorm
+impl<T> Norm<MatrixBuf<T>, T> for EuclideanNorm
 where
     T: Mul<Output = T> + Add<Output = T> + Sqrt + Copy,
 {
     fn norm(mat: &MatrixBuf<T>) -> T {
-        let slice = mat.array.as_slice();
+        EuclideanNorm::norm(mat.array.as_slice())
+    }
+}
+
+impl<T> Norm<[T], T> for EuclideanNorm
+where
+    T: Mul<Output = T> + Add<Output = T> + Sqrt + Copy,
+{
+    fn norm(slice: &[T]) -> T {
         let mut ans = slice[0] * slice[0];
         for i in 1..slice.len() {
             ans = ans + slice[i] * slice[i];
