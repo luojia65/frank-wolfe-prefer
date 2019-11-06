@@ -1,13 +1,13 @@
 use crate::array::ArrayBuf;
 use crate::linalg::MatrixBuf;
-use core::ops::{Mul, Add};
+use core::ops::{Add, Mul};
 use rand::distributions::{Distribution, Standard};
 use rand::seq::SliceRandom;
 
-pub fn data<T>(m: usize, n: usize) -> MatrixBuf<T> 
-where 
+pub fn data<T>(m: usize, n: usize) -> MatrixBuf<T>
+where
     T: Mul<Output = T> + Add<Output = T>,
-    Standard: Distribution<T> 
+    Standard: Distribution<T>,
 {
     let mut uv = Vec::new();
     for _ in 0..m {
@@ -40,4 +40,4 @@ pub fn omega(m: usize, n: usize, rate: f64) -> MatrixBuf<bool> {
     let mut arr = ArrayBuf::from(a);
     arr.truncate([m, n]);
     MatrixBuf::from(arr)
-} 
+}

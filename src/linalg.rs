@@ -1,7 +1,7 @@
 use crate::array::ArrayBuf;
 use core::fmt::{self, Debug};
-use core::ops::{Add, Index, IndexMut, Mul};
 use core::mem;
+use core::ops::{Add, Index, IndexMut, Mul};
 use core::ptr;
 
 // pub type Matrix<T, const R: usize, const C: usize>
