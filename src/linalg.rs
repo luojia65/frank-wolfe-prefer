@@ -1,8 +1,7 @@
 use crate::array::ArrayBuf;
+use crate::number::Sqrt;
 use core::fmt::{self, Debug};
-use core::mem;
 use core::ops::{Add, Index, IndexMut, Mul};
-use core::ptr;
 
 // pub type Matrix<T, const R: usize, const C: usize>
 //     = Array<T, 2, [R, C]>;
@@ -117,6 +116,7 @@ where
     let n = b.nrows();
     let mut ans = ArrayBuf::new();
     ans.reshape_with([a.nrows(), b.ncols()], || unsafe { core::mem::zeroed() });
+    use core::{mem, ptr};
     for i in 0..a.nrows() {
         for j in 0..b.ncols() {
             let t1: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
@@ -136,4 +136,25 @@ where
         }
     }
     MatrixBuf::from(ans)
+}
+
+pub trait Norm<T> {
+    fn norm(mat: &MatrixBuf<T>) -> T;
+}
+
+// ||x||₂
+pub struct EuclideanNorm;
+
+impl<T> Norm<T> for EuclideanNorm
+where
+    T: Mul<Output = T> + Add<Output = T> + Sqrt + Copy,
+{
+    fn norm(mat: &MatrixBuf<T>) -> T {
+        let slice = mat.array.as_slice();
+        let mut ans = slice[0] * slice[0];
+        for i in 1..slice.len() {
+            ans = ans + slice[i] * slice[i];
+        }
+        ans.sqrt()
+    }
 }
