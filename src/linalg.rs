@@ -1,7 +1,7 @@
 use crate::array::ArrayBuf;
 use crate::number::Sqrt;
 use core::fmt::{self, Debug};
-use core::ops::{Add, Index, IndexMut, Mul};
+use core::ops::{Add, Sub, Mul, Index, IndexMut};
 
 // pub type Matrix<T, const R: usize, const C: usize>
 //     = Array<T, 2, [R, C]>;
@@ -10,6 +10,17 @@ use core::ops::{Add, Index, IndexMut, Mul};
 pub struct MatrixBuf<T> {
     array: ArrayBuf<T>,
     transposed: bool,
+}
+
+impl<T> MatrixBuf<T> 
+where 
+    T: Clone 
+{
+    pub fn new_filled(value: T, shape: [usize; 2]) -> MatrixBuf<T> {
+        let mut array = ArrayBuf::from(vec![value; shape[0] * shape[1]]);
+        array.truncate(shape);
+        MatrixBuf { array, transposed: false }
+    }
 }
 
 impl<T> MatrixBuf<T> {
@@ -28,7 +39,27 @@ impl<T> MatrixBuf<T> {
 
 impl<T> MatrixBuf<T> {
     pub fn transpose(&mut self) {
+        if self.nrows() == 1 || self.ncols() == 1 {
+            if self.nrows() == 1 {
+                self.array.truncate([self.ncols(), 1])
+            } else {
+                self.array.truncate([1, self.nrows()])
+            }
+            return;
+        }
         self.transposed = !self.transposed;
+    }
+}
+
+impl<T> From<Vec<T>> for MatrixBuf<T> {
+    fn from(src: Vec<T>) -> MatrixBuf<T> {
+        let len = src.len();
+        let mut array = ArrayBuf::from(src);
+        array.truncate([len, 1]);
+        MatrixBuf {
+            array,
+            transposed: false,
+        }
     }
 }
 
@@ -103,6 +134,95 @@ where
     }
 }
 
+impl<T> Add for &MatrixBuf<T> 
+where 
+    T: Add<Output = T>
+{
+    type Output = MatrixBuf<T>;
+
+    fn add(self, other: Self) -> MatrixBuf<T> {
+        if self.nrows() != other.nrows() || self.ncols() != other.ncols() {
+            panic!("cannot add matrices with different shape ({}, {} != {}, {})",
+                self.nrows(), self.ncols(), other.nrows(), other.ncols())
+        }
+        let mut vec = Vec::new();
+        for i in 0..self.nrows() {
+            for j in 0..self.ncols() {
+                use core::{mem, ptr};
+                let t1: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
+                let t2: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
+                unsafe { ptr::copy(&self[[i, j]] as *const _, &t1 as *const _ as *mut _, 1) };
+                unsafe { ptr::copy(&other[[i, j]] as *const _, &t2 as *const _ as *mut _, 1) };
+                vec.push(t1 + t2)
+            }
+        }
+        let mut arr = ArrayBuf::from(vec);
+        arr.truncate([self.nrows(), self.ncols()]);
+        MatrixBuf::from(arr)
+    }
+}
+
+impl<T> Add for MatrixBuf<T> 
+where 
+    T: Add<Output = T>
+{
+    type Output = MatrixBuf<T>;
+
+    fn add(self, other: Self) -> MatrixBuf<T> {
+        &self + &other
+    }
+}
+
+impl<T> Sub for &MatrixBuf<T> 
+where 
+    T: Sub<Output = T>
+{
+    type Output = MatrixBuf<T>;
+
+    fn sub(self, other: Self) -> MatrixBuf<T> {
+        if self.nrows() != other.nrows() || self.ncols() != other.ncols() {
+            panic!("cannot add matrices with different shape ({}, {} != {}, {})",
+                self.nrows(), self.ncols(), other.nrows(), other.ncols())
+        }
+        let mut vec = Vec::new();
+        for i in 0..self.nrows() {
+            for j in 0..self.ncols() {
+                use core::{mem, ptr};
+                let t1: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
+                let t2: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
+                unsafe { ptr::copy(&self[[i, j]] as *const _, &t1 as *const _ as *mut _, 1) };
+                unsafe { ptr::copy(&other[[i, j]] as *const _, &t2 as *const _ as *mut _, 1) };
+                vec.push(t1 - t2)
+            }
+        }
+        let mut arr = ArrayBuf::from(vec);
+        arr.truncate([self.nrows(), self.ncols()]);
+        MatrixBuf::from(arr)
+    }
+}
+
+impl<T> Sub for MatrixBuf<T> 
+where 
+    T: Sub<Output = T>
+{
+    type Output = MatrixBuf<T>;
+
+    fn sub(self, other: Self) -> MatrixBuf<T> {
+        &self - &other
+    }
+}
+
+impl<T> Mul for &MatrixBuf<T>
+where
+    T: Mul<Output = T> + Add<Output = T>,
+{
+    type Output = MatrixBuf<T>;
+
+    fn mul(self, rhs: &MatrixBuf<T>) -> MatrixBuf<T> {
+        gemm_scalar(self, rhs)
+    }
+}
+
 impl<T> Mul for MatrixBuf<T>
 where
     T: Mul<Output = T> + Add<Output = T>,
@@ -110,12 +230,36 @@ where
     type Output = Self;
 
     fn mul(self, rhs: MatrixBuf<T>) -> MatrixBuf<T> {
-        gemm_scalar(self, rhs)
+        gemm_scalar(&self, &rhs)
+    }
+}
+
+impl<T> Mul<T> for &MatrixBuf<T>
+where
+    T: Mul<Output = T> 
+{
+    type Output = MatrixBuf<T>;
+
+    fn mul(self, rhs: T) -> MatrixBuf<T> {
+        let mut vec = Vec::new();
+        for i in 0..self.nrows() {
+            for j in 0..self.ncols() {
+                use core::{mem, ptr};
+                let t1: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
+                let t2: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
+                unsafe { ptr::copy(&self[[i, j]] as *const _, &t1 as *const _ as *mut _, 1) };
+                unsafe { ptr::copy(&rhs as *const _, &t2 as *const _ as *mut _, 1) };
+                vec.push(t1 * t2);
+            }
+        }
+        let mut arr = ArrayBuf::from(vec);
+        arr.truncate([self.nrows(), self.ncols()]);
+        MatrixBuf::from(arr)
     }
 }
 
 // time: O(m*n*p) ~ O(n³)
-fn gemm_scalar<T>(a: MatrixBuf<T>, b: MatrixBuf<T>) -> MatrixBuf<T>
+fn gemm_scalar<T>(a: &MatrixBuf<T>, b: &MatrixBuf<T>) -> MatrixBuf<T>
 where
     T: Mul<Output = T> + Add<Output = T>,
 {
