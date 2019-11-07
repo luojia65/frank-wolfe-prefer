@@ -21,8 +21,17 @@ impl Local {
         v.transpose();
         let m = &self.yi_t1 * (1.0 - 1.0 / max_t as f32) - 
             &ui * (1.0 /*?*/ / max_t as f32) * v;
-        // let yi_t = 
-        unimplemented!()
+        let yi_t = self.omega_i.pi_l_omega(m, l, 1.0);
+        let ai_t = self.omega_i.p_omega(&yi_t - &self.ystar_i, 0.0);
+        if t < max_t {
+            self.yi_t1 = yi_t;
+            let mut ai_tt = ai_t.clone();
+            ai_tt.transpose();
+            return ai_t * ai_tt;
+        } else {
+            println!("Prediction: {:?}", yi_t);
+            return MatrixBuf::new_filled(0.0, [N, N])
+        }
     }
 }
 
@@ -58,5 +67,6 @@ fn main() {
         for local in locals.iter_mut() {
             w = w + local.update(v.clone(), lambda_prime, max_t, t, l);
         }
+
     }
 }

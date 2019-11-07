@@ -276,8 +276,7 @@ where
         );
     }
     let n = b.nrows();
-    let mut ans = ArrayBuf::new();
-    ans.reshape_with([a.nrows(), b.ncols()], || unsafe { core::mem::zeroed() });
+    let mut vec = Vec::new();
     use core::{mem, ptr};
     for i in 0..a.nrows() {
         for j in 0..b.ncols() {
@@ -285,19 +284,20 @@ where
             let t2: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
             unsafe { ptr::copy(&a[[i, 0]] as *const _, &t1 as *const _ as *mut _, 1) };
             unsafe { ptr::copy(&b[[0, j]] as *const _, &t2 as *const _ as *mut _, 1) };
-            ans[[i, j]] = t1 * t2;
+            let mut ans = t1 * t2;
             for k in 1..n {
                 let t1: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
                 let t2: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
-                let t3: T = unsafe { mem::MaybeUninit::uninit().assume_init() };
                 unsafe { ptr::copy(&a[[i, k]] as *const _, &t1 as *const _ as *mut _, 1) };
                 unsafe { ptr::copy(&b[[k, j]] as *const _, &t2 as *const _ as *mut _, 1) };
-                unsafe { ptr::copy(&ans[[i, j]] as *const _, &t3 as *const _ as *mut _, 1) };
-                ans[[i, j]] = t3 + t1 * t2;
+                ans = ans + t1 * t2;
             }
+            vec.push(ans)
         }
     }
-    MatrixBuf::from(ans)
+    let mut array = ArrayBuf::from(vec);
+    array.truncate([a.nrows(), b.ncols()]);
+    MatrixBuf::from(array)
 }
 
 pub trait Norm<M: ?Sized, R> {
@@ -309,7 +309,7 @@ pub struct EuclideanNorm;
 
 impl<T> Norm<MatrixBuf<T>, T> for EuclideanNorm
 where
-    T: Mul<Output = T> + Add<Output = T> + Sqrt + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Sqrt + Clone,
 {
     fn norm(mat: &MatrixBuf<T>) -> T {
         EuclideanNorm::norm(mat.array.as_slice())
@@ -318,12 +318,12 @@ where
 
 impl<T> Norm<[T], T> for EuclideanNorm
 where
-    T: Mul<Output = T> + Add<Output = T> + Sqrt + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Sqrt + Clone,
 {
     fn norm(slice: &[T]) -> T {
-        let mut ans = slice[0] * slice[0];
+        let mut ans = slice[0].clone() * slice[0].clone();
         for i in 1..slice.len() {
-            ans = ans + slice[i] * slice[i];
+            ans = ans + slice[i].clone() * slice[i].clone();
         }
         ans.sqrt()
     }
